@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
-serve((_req: Request) => {
+// roll dice
+const rollDice = () => {
+  return Math.floor(Math.random() * 6) + 1;
+};
 
-  return new Response("Hello Tamika", {});
+serve((_req: Request) => {
+  
+  return new Response(`you rolled ${rollDice()}`, {});
 });

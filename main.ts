@@ -3,32 +3,31 @@ import { CompressionTypes, Kafka, Message } from "npm:kafkajs@2.2.4";
 
 const username = Deno.env.get("KAFKA_USERNAME");
 const password = Deno.env.get("KAFKA_PASSWORD");
-const broker = Deno.env.get("KAFKA_BROKERS");
+const broker = Deno.env.get("KAFKA_BROKER");
+const SASL_MECHANISM = "scram-sha-256";
 
 type DiceRollEvent = {
   roll: number;
+  username: string;
 };
 
 if (!username) {
-  console.error("Please set the 'KAFKA_USERNAME' environment variable");
-  Deno.exit(1);
+  throw new Error("Please set the 'KAFKA_USERNAME' environment variable");
 }
 
 if (!password) {
-  console.error("Please set the 'KAFKA_PASSWORD' environment variable");
-  Deno.exit(2);
+  throw new Error("Please set the 'KAFKA_PASSWORD' environment variable");
 }
 
 if (!broker) {
-  console.error("Please set the 'KAFKA_BROKER' environment variable");
-  Deno.exit(3);
+  throw new Error("Please set the 'KAFKA_BROKER' environment variable");
 }
 
 const redpanda = new Kafka({
   brokers: [broker],
   ssl: {},
   sasl: {
-    mechanism: "scram-sha-256",
+    mechanism: SASL_MECHANISM,
     username,
     password,
   },
@@ -68,6 +67,7 @@ const rollDice = () => {
 };
 
 serve((req: Request) => {
+  const region = Deno.env.get("DENO_REGION") || "unknown";
   const roll = rollDice();
   const segments = new URL(req.url).pathname.split("/");
 
@@ -80,15 +80,18 @@ serve((req: Request) => {
   const action = segments[1];
   const username = segments[2];
 
-  const value: DiceRollEvent = { roll };
+  const value: DiceRollEvent = { roll, username };
   const date = new Date().toISOString();
 
   if (action === "roll") {
     sendMessage("roll", {
-      key: username,
+      key: region,
       value,
     });
-    return new Response(`${username} rolled ${roll} at ${date}`, {});
+    return new Response(
+      `${username} rolled ${roll} from ${region} at ${date}`,
+      {},
+    );
   }
 
   return new Response("Bad Request: please use /roll/:username", {

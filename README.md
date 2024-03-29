@@ -39,7 +39,8 @@ deno task serve
   "region": "unknown",
   "date": "2024-03-29T04:05:27.324Z",
   "kafka_success": true,
-  "kafka_record": [ // this part will be missing if the kafka record was not saved
+  "kafka_record": [
+    // this part will be missing if the kafka record was not saved
     {
       "topicName": "roll",
       "partition": 0,
@@ -50,4 +51,12 @@ deno task serve
     }
   ]
 }
+```
+
+8. If you'd like to listen for updates to the 'roll' topic, you can run the
+   `consume` application. Remember, this is cool because it can run anywhere -
+   it just happens to be on the same machine as the `serve` application.
+
+```bash
+deno task consume
 ```

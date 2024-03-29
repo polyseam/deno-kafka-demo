@@ -1,5 +1,8 @@
 {
+  "name": "@polyseam/deno-kafka-demo",
+  "version": "0.1.0",
   "tasks": {
-    "serve": "export $(xargs < .env) && deno run --allow-net --allow-env main.ts"
+    "serve": "export $(xargs < .env) && deno run --allow-net --allow-env main.ts",
+    "consume": "export $(xargs < .env) && deno run --allow-net --allow-env consume.ts"
   }
 }

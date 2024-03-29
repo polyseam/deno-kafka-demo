@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import {
   CompressionTypes,
   Kafka,
@@ -15,6 +14,7 @@ const HTTP_CODES = {
 const username = Deno.env.get("KAFKA_USERNAME");
 const password = Deno.env.get("KAFKA_PASSWORD");
 const broker = Deno.env.get("KAFKA_BROKER");
+
 const SASL_MECHANISM = "scram-sha-256";
 
 function InstructionsPage() {
@@ -109,7 +109,7 @@ const rollDice = (sides = 6) => {
   return Math.floor(Math.random() * sides) + 1;
 };
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   // Deno cloud populated region of the world
   const region = Deno.env.get("DENO_REGION") || "unknown";
 

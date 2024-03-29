@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
-import { CompressionTypes, Kafka, Message } from "npm:kafkajs@2.2.4";
+import {
+  CompressionTypes,
+  Kafka,
+  Message,
+  RecordMetadata,
+} from "npm:kafkajs@2.2.4";
 
 const username = Deno.env.get("KAFKA_USERNAME");
 const password = Deno.env.get("KAFKA_PASSWORD");
@@ -33,16 +38,21 @@ const redpanda = new Kafka({
 });
 
 const producer = redpanda.producer();
-await producer.connect();
 
 type EasyMsg = {
   key: string;
   value: Record<string, unknown>;
 };
 
-const sendMessage = (topic: string, msg: EasyMsg) => {
+const sendMessage = async (
+  topic: string,
+  msg: EasyMsg,
+): Promise<RecordMetadata[] | void> => {
   // Messages with the same key are sent to the same topic partition for
   // guaranteed ordering
+
+  await producer.connect();
+
   const messages: Array<Message> = [
     {
       key: msg.key,
@@ -50,7 +60,7 @@ const sendMessage = (topic: string, msg: EasyMsg) => {
     },
   ];
 
-  return producer
+  const recordMetadata = await producer
     .send({
       topic,
       compression: CompressionTypes.GZIP,
@@ -59,6 +69,7 @@ const sendMessage = (topic: string, msg: EasyMsg) => {
     .catch((e: Error) => {
       console.error(`Unable to send message: ${e.message}`, e);
     });
+  if (recordMetadata) return recordMetadata;
 };
 
 // roll dice
@@ -85,17 +96,29 @@ serve(async (req: Request) => {
   const date = new Date().toISOString();
 
   if (action === "roll") {
-    await sendMessage("roll", {
+    const kafkaRecord = await sendMessage("roll", {
       key: region,
       value,
     });
 
-    producer.disconnect();
+    await producer.disconnect();
 
-    return new Response(
-      `${username} rolled ${roll} from ${region} at ${date}`,
-      {},
-    );
+    const responseBody = {
+      username,
+      roll,
+      region,
+      date,
+      kafkaRecord,
+    };
+
+    const status = kafkaRecord ? 200 : 500;
+
+    return new Response(JSON.stringify(responseBody, null, 2), {
+      headers: {
+        "content-type": "application/json",
+      },
+      status,
+    });
   }
 
   return new Response("Bad Request: please use /roll/:username", {

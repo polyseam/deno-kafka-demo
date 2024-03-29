@@ -84,7 +84,24 @@ serve(async (req: Request) => {
   const segments = new URL(req.url).pathname.split("/");
 
   if (segments.length !== 3) {
-    return new Response("Bad Request: please use /roll/:username", {
+    const html = `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Roll Dice</title>
+    </head>
+    <body>
+      <h1>Roll Dice</h1>
+      <a href="/roll/anonymous">Roll the dice</a>
+    </body>
+    </html>
+    `.trim();
+
+    return new Response(html, {
+      headers: {
+        "content-type": "text/html",
+      },
       status: 400,
     });
   }

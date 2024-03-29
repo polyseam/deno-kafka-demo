@@ -6,6 +6,12 @@ import {
   RecordMetadata,
 } from "npm:kafkajs@2.2.4";
 
+const HTTP_CODES = {
+  OK: 200,
+  BAD_REQUEST: 400,
+  INTERNAL_SERVER_ERROR: 500,
+};
+
 const username = Deno.env.get("KAFKA_USERNAME");
 const password = Deno.env.get("KAFKA_PASSWORD");
 const broker = Deno.env.get("KAFKA_BROKER");
@@ -99,57 +105,68 @@ const sendMessage = async (
 };
 
 // roll dice
-const rollDice = () => {
-  return Math.floor(Math.random() * 6) + 1;
+const rollDice = (sides = 6) => {
+  return Math.floor(Math.random() * sides) + 1;
 };
 
 serve(async (req: Request) => {
-  // setup
+  // Deno cloud populated region of the world
   const region = Deno.env.get("DENO_REGION") || "unknown";
-  const roll = rollDice();
-  const segments = new URL(req.url).pathname.split("/");
-  const action = segments[1];
-  const username = segments[2];
-  const date = new Date().toISOString();
 
-  if (segments.length !== 3 || action !== "roll") {
+  // the URL of the current HTTP Request
+  const url = new URL(req.url);
+
+  // everything segment after the hostname
+  const segments: Array<string> = url.pathname.split("/"); // ideally ["roll", "username"];
+
+  const action = segments[1]; // ideally "roll"
+  const username = segments[2]; // ideally "username"
+  const date = new Date().toISOString(); // eg. "2021-09-01T12:00:00.000Z"
+
+  // the user doesn't know what they're doing, show instructions
+  const shouldDisplayInstructions = segments.length !== 3 || action !== "roll";
+
+  if (shouldDisplayInstructions) {
     return new Response(InstructionsPage(), {
       headers: {
         "content-type": "text/html",
       },
-      status: 400,
+      status: HTTP_CODES.BAD_REQUEST,
     });
   }
 
-  const value: DiceRollEvent = { roll, username, date };
+  // things seem good - get a random number between 1 and 6
+  const roll = rollDice();
 
-  if (action === "roll") {
-    const kafkaRecord = await sendMessage("roll", {
-      key: region,
-      value,
-    });
+  // create a JSON object, the body of the Kafka Message
+  const value: DiceRollEvent = { roll, username }; // eg. "{"roll": 4, "username": "alice"}"
 
-    await producer.disconnect();
+  // send the message to the Kafka "roll" topic
+  const kafkaRecord = await sendMessage("roll", {
+    key: region,
+    value,
+  });
 
-    const responseBody = {
-      username,
-      roll,
-      region,
-      date,
-      kafkaRecord,
-    };
+  // after sending the message, disconnect the producer
+  await producer.disconnect();
 
-    const status = kafkaRecord ? 200 : 500;
+  // create a response body to send to the user who made the request
+  const responseBody = {
+    username,
+    roll,
+    region,
+    date,
+    kafkaRecord,
+  };
 
-    return new Response(JSON.stringify(responseBody, null, 2), {
-      headers: {
-        "content-type": "application/json",
-      },
-      status,
-    });
-  }
+  // the status of the request should be "OK" if the Kafka message was stored successfully
+  // otherwise, the status should be "INTERNAL_SERVER_ERROR"
+  const status = kafkaRecord ? HTTP_CODES.OK : HTTP_CODES.INTERNAL_SERVER_ERROR;
 
-  return new Response("Bad Request: please use /roll/:username", {
-    status: 400,
+  return new Response(JSON.stringify(responseBody, null, 2), {
+    headers: {
+      "content-type": "application/json",
+    },
+    status,
   });
 });

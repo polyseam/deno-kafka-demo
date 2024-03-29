@@ -6,5 +6,5 @@ This repository contains a demo of how to connect to Redpanda Cloud using the
 ## usage
 
 Visit
-[redpanda-demo.com/yourname/roll](https://redpanda-demo.com/anonymous/roll) to
+[redpanda-demo.deno.dev/yourname/roll](https://redpanda-demo.deno.dev/anonymous/roll) to
 produce an event in the `"roll"` topic, and receive a response.

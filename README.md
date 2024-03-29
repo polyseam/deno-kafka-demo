@@ -22,11 +22,32 @@ KAFKA_PASSWORD='iwgno4gi5oign4woian4gio4w'
 KAFKA_BROKER='w4gnwi4ngoi4wn.any.us-east-1.mpx.prd.cloud.redpanda.com:9092'
 ```
 
-5. Deploy the application using [deno deploy](https://deno.dev) by linking to
-   your GitHub repository.
+5. Run the application
 
-## usage
+```bash
+deno task serve
+```
 
-Visit
-[redpanda-demo.deno.dev/roll/yourname](https://redpanda-demo.deno.dev/roll/anonymous)
-to produce an event in the `"roll"` topic, and receive a response.
+6. Visit [localhost:8000/roll/yourname](http://localhost:8000/roll/anonymous)
+
+7. if configured correctly, you should see a response which looks like
+
+```jsonc
+{
+  "username": "foo",
+  "roll": 1,
+  "region": "unknown",
+  "date": "2024-03-29T04:05:27.324Z",
+  "kafka_success": true,
+  "kafka_record": [ // this part will be missing if the kafka record was not saved
+    {
+      "topicName": "roll",
+      "partition": 0,
+      "errorCode": 0,
+      "baseOffset": "8",
+      "logAppendTime": "-1",
+      "logStartOffset": "-1"
+    }
+  ]
+}
+```

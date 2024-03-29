@@ -142,7 +142,8 @@ serve(async (req: Request) => {
   const value: DiceRollEvent = { roll, username }; // eg. "{"roll": 4, "username": "alice"}"
 
   // send the message to the Kafka "roll" topic
-  const kafkaRecord = await sendMessage("roll", {
+  const TOPIC_NAME = "roll";
+  const kafka_record = await sendMessage(TOPIC_NAME, {
     key: region,
     value,
   });
@@ -150,18 +151,24 @@ serve(async (req: Request) => {
   // after sending the message, disconnect the producer
   await producer.disconnect();
 
+  // if there is a record from kafka, this will be `true`
+  const kafka_success = !!kafka_record;
+
   // create a response body to send to the user who made the request
   const responseBody = {
     username,
     roll,
     region,
     date,
-    kafkaRecord,
+    kafka_success,
+    kafka_record,
   };
 
   // the status of the request should be "OK" if the Kafka message was stored successfully
   // otherwise, the status should be "INTERNAL_SERVER_ERROR"
-  const status = kafkaRecord ? HTTP_CODES.OK : HTTP_CODES.INTERNAL_SERVER_ERROR;
+  const status = kafka_success
+    ? HTTP_CODES.OK
+    : HTTP_CODES.INTERNAL_SERVER_ERROR;
 
   return new Response(JSON.stringify(responseBody, null, 2), {
     headers: {

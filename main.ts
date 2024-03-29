@@ -11,6 +11,32 @@ const password = Deno.env.get("KAFKA_PASSWORD");
 const broker = Deno.env.get("KAFKA_BROKER");
 const SASL_MECHANISM = "scram-sha-256";
 
+function InstructionsPage() {
+  return `<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Roll Dice</title>
+    <script>
+      function updateAction() {
+        const username = document.getElementById("username").value;
+        const form = document.querySelector("form");
+        form.action = "/roll/" + username;
+      }
+    </script>
+  </head>
+  <body>
+    <h1>Roll Dice</h1>
+    <form action="/roll/anonymous">
+      <input type="text" id="username" onchange="updateAction()" placeholder="Enter your username" />
+      <button type="submit">Roll the dice</a>
+    <form>
+  </body>
+  </html>
+  `.trim();
+}
+
 type DiceRollEvent = {
   roll: number;
   username: string;
@@ -82,23 +108,12 @@ serve(async (req: Request) => {
   const region = Deno.env.get("DENO_REGION") || "unknown";
   const roll = rollDice();
   const segments = new URL(req.url).pathname.split("/");
+  const action = segments[1];
+  const username = segments[2];
+  const date = new Date().toISOString();
 
-  if (segments.length !== 3) {
-    const html = `<!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Roll Dice</title>
-    </head>
-    <body>
-      <h1>Roll Dice</h1>
-      <a href="/roll/anonymous">Roll the dice</a>
-    </body>
-    </html>
-    `.trim();
-
-    return new Response(html, {
+  if (segments.length !== 3 || action !== "roll") {
+    return new Response(InstructionsPage(), {
       headers: {
         "content-type": "text/html",
       },
@@ -106,11 +121,7 @@ serve(async (req: Request) => {
     });
   }
 
-  const action = segments[1];
-  const username = segments[2];
-
-  const value: DiceRollEvent = { roll, username };
-  const date = new Date().toISOString();
+  const value: DiceRollEvent = { roll, username, date };
 
   if (action === "roll") {
     const kafkaRecord = await sendMessage("roll", {
